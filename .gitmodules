@@ -1,0 +1,9 @@
+[submodule "third_party/mongoose"]
+	path = third_party/mongoose
+	url = https://github.com/cesanta/mongoose
+[submodule "third_party/proton-sdk"]
+	path = third_party/proton-sdk
+	url = https://github.com/SethRobinson/proton
+[submodule "third_party/MicroPather"]
+	path = third_party/MicroPather
+	url = https://github.com/leethomason/MicroPather

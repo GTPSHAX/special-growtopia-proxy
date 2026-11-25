@@ -1,0 +1,120 @@
+name: Windows Distribution
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-bincache
+
+jobs:
+  package:
+    name: Windows ${{ matrix.arch }} Release
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            preset: windows-x64-msvc
+            triplet: x64-windows
+          - arch: x86
+            preset: windows-x86-msvc
+            triplet: x86-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: df25fb4f73c1c3bf7d019fc50742fc90902f8c60
+          path: vcpkg
+          fetch-depth: 0
+
+      - name: Bootstrap vcpkg
+        run: .\vcpkg\bootstrap-vcpkg.bat
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-bincache
+          key: vcpkg-distribution-${{ matrix.arch }}-${{ hashFiles('vcpkg.json') }}
+
+      - name: Create vcpkg binary cache
+        run: New-Item -ItemType Directory -Force vcpkg-bincache | Out-Null
+
+      - name: Configure Release
+        run: >-
+          cmake --preset ${{ matrix.preset }}
+          -DCMAKE_BUILD_TYPE=Release
+          -DSPXCORE_BUILD_SHARED=OFF
+          -DSPXCORE_BUILD_DISTRIBUTION_APP=ON
+
+      - name: Build Release
+        run: cmake --build --preset ${{ matrix.preset }} --config Release --parallel
+
+      - name: Validate executable architecture and UAC manifest
+        shell: pwsh
+        run: |
+          $app = Join-Path $env:GITHUB_WORKSPACE "build/${{ matrix.preset }}/bin/SpecialProxy.exe"
+          $manifest = Join-Path $env:RUNNER_TEMP "specialproxy-manifest.xml"
+          & mt.exe "-inputresource:$app;#1" "-out:$manifest"
+          if ($LASTEXITCODE -ne 0) { throw "Could not read executable manifest" }
+          [xml]$xml = Get-Content $manifest
+          $level = $xml.assembly.trustInfo.security.requestedPrivileges.requestedExecutionLevel.level
+          if ($level -ne "requireAdministrator") { throw "Expected requireAdministrator manifest, got '$level'" }
+
+          $bytes = [IO.File]::ReadAllBytes($app)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          $expectedMachine = if ("${{ matrix.arch }}" -eq "x64") { 0x8664 } else { 0x014c }
+          if ($machine -ne $expectedMachine) { throw "Unexpected PE machine: 0x$($machine.ToString('x4'))" }
+
+      - name: Run tests
+        run: ctest --preset ${{ matrix.preset }} -C Release --timeout 60 -E "^script$"
+
+      - name: Package complete bin directory
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP "specialproxy-windows-${{ matrix.arch }}"
+          $runtime = Join-Path $env:GITHUB_WORKSPACE "build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}/bin"
+          $app = Join-Path $env:GITHUB_WORKSPACE "build/${{ matrix.preset }}/bin/SpecialProxy.exe"
+          $bin = Join-Path $env:GITHUB_WORKSPACE "bin"
+          $stagedBin = Join-Path $stage "bin"
+
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          New-Item -ItemType Directory -Force $stagedBin | Out-Null
+          Copy-Item -Path (Join-Path $bin "*") -Destination $stagedBin -Recurse -Force
+          Copy-Item $app $stagedBin -Force
+
+          $binFiles = Get-ChildItem -LiteralPath $bin -File -Force -Recurse | ForEach-Object {
+            $_.FullName.Substring($bin.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+          }
+          $missing = $binFiles | Where-Object { -not (Test-Path (Join-Path $stagedBin $_)) }
+          if ($missing) { throw "ZIP staging omitted bin files: $($missing -join ', ')" }
+
+          $dlls = Get-ChildItem $runtime -Filter *.dll -File
+          if (-not $dlls) { throw "No runtime DLLs found under $runtime" }
+          Copy-Item $dlls.FullName $stagedBin -Force
+
+      - name: Upload architecture package
+        uses: actions/upload-artifact@v4
+        with:
+          name: specialproxy-windows-${{ matrix.arch }}
+          path: ${{ runner.temp }}/specialproxy-windows-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 30

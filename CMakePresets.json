@@ -1,0 +1,128 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    },
+    {
+      "name": "windows-x64-msvc",
+      "inherits": "base",
+      "displayName": "Windows x64 (MSVC + Ninja)",
+      "architecture": { "strategy": "external", "value": "x64" },
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows" }
+    },
+    {
+      "name": "windows-x86-msvc",
+      "inherits": "base",
+      "displayName": "Windows x86 (MSVC + Ninja)",
+      "architecture": { "strategy": "external", "value": "x86" },
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x86-windows" }
+    },
+    {
+      "name": "android-arm64",
+      "inherits": "base",
+      "displayName": "Android arm64-v8a (NDK Clang + Ninja)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-android",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24"
+      }
+    },
+    {
+      "name": "android-armeabi",
+      "inherits": "base",
+      "displayName": "Android armeabi-v7a (NDK Clang + Ninja)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm-neon-android",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "ANDROID_ABI": "armeabi-v7a",
+        "ANDROID_PLATFORM": "android-24"
+      }
+    },
+    {
+      "name": "linux-x64",
+      "inherits": "base",
+      "displayName": "Linux x64 (native host GCC/Clang)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux"
+      }
+    },
+    {
+      "name": "linux-x64-cross",
+      "inherits": "base",
+      "displayName": "Linux x64 (cross dari Windows, Clang + sysroot)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux.cmake"
+      }
+    },
+    {
+      "name": "macos-arm64",
+      "inherits": "base",
+      "displayName": "macOS arm64 (native host Clang)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
+      }
+    },
+    {
+      "name": "macos-x64-cross",
+      "inherits": "base",
+      "displayName": "macOS x64 (cross dari Windows, Clang + macOS SDK)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-osx",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.cmake",
+        "SPXCORE_OSX_ARCH": "x86_64"
+      }
+    },
+    {
+      "name": "macos-arm64-cross",
+      "inherits": "base",
+      "displayName": "macOS arm64 (cross dari Windows, Clang + macOS SDK)",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/macos.cmake",
+        "SPXCORE_OSX_ARCH": "arm64"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-x64-msvc", "configurePreset": "windows-x64-msvc" },
+    { "name": "windows-x86-msvc", "configurePreset": "windows-x86-msvc" },
+    { "name": "android-arm64", "configurePreset": "android-arm64" },
+    { "name": "android-armeabi", "configurePreset": "android-armeabi" },
+    { "name": "linux-x64-cross", "configurePreset": "linux-x64-cross" },
+    { "name": "linux-x64", "configurePreset": "linux-x64" },
+    { "name": "macos-x64-cross", "configurePreset": "macos-x64-cross" },
+    { "name": "macos-arm64", "configurePreset": "macos-arm64" },
+    { "name": "macos-arm64-cross", "configurePreset": "macos-arm64-cross" }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-x64-msvc",
+      "configurePreset": "windows-x64-msvc",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-x86-msvc",
+      "configurePreset": "windows-x86-msvc",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-x64",
+      "configurePreset": "linux-x64",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "macos-arm64",
+      "configurePreset": "macos-arm64",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-bincache
+
+jobs:
+  build-linux:
+    name: Linux x86_64
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build pkg-config
+
+      # vcpkg pinned to our manifest's builtin-baseline commit
+      - name: Setup vcpkg
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: df25fb4f73c1c3bf7d019fc50742fc90902f8c60
+          path: vcpkg
+          fetch-depth: 0
+
+      - name: Bootstrap vcpkg
+        run: ./vcpkg/bootstrap-vcpkg.sh
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-bincache
+          key: vcpkg-linux-x64-${{ hashFiles('vcpkg.json') }}
+
+      - name: Create vcpkg binary cache dir
+        run: mkdir -p vcpkg-bincache
+
+      - name: Configure
+        run: cmake --preset linux-x64
+
+      - name: Build
+        run: cmake --build --preset linux-x64 --parallel
+
+      - name: Test
+        run: ctest --preset linux-x64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: build/linux-x64/**

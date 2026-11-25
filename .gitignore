@@ -1,0 +1,19 @@
+# Build output
+build*/
+out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Local presets
+CMakeUserPresets.json
+
+# vcpkg
+vcpkg_installed/
+
+# Executables
+*.exe
+*.pdb
+*.dll

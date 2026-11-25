@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "specialproxy-core",
+  "version": "0.1.0",
+  "builtin-baseline": "df25fb4f73c1c3bf7d019fc50742fc90902f8c60",
+  "description": "Cross-platform proxy core library (Windows, Linux, Android).",
+  "dependencies": [
+    "fmt",
+    "glm",
+    "lua",
+    "nlohmann-json",
+    "openssl",
+    "zlib"
+  ]
+}
